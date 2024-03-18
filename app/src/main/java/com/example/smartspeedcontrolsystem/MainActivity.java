@@ -1,6 +1,7 @@
 package com.example.smartspeedcontrolsystem;
 
 import androidx.appcompat.app.AppCompatActivity;
+import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
@@ -14,22 +15,23 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.MarkerOptions;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, LocationListener {
-    private int num = 1;
     private GoogleMap mMap;
     private static final String TAG = "MainActivity";
     private LocationManager locationManager;
     private double currentLatitude, currentLongitude;
     private static final int REQUEST_LOCATION_PERMISSION = 1;
+    private List<CircleOptions> circles = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,11 +47,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // CSV 파일에서 주소 읽어오기
         readCsvFile();
-    }
-
-    @Override
-    public void onMapReady(GoogleMap googleMap) {
-        mMap = googleMap;
     }
 
     private void checkLocationPermission() {
@@ -89,43 +86,35 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         new Thread(new Runnable() {
             @Override
             public void run() {
-                while (true) { // 무한 루프
-                    InputStream inputStream = getResources().openRawResource(R.raw.combined); // CSV 파일 리소스 가져오기
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-                    try {
-                        // 첫 번째 행(헤더)을 읽어서 버림
-                        reader.readLine();
+                InputStream inputStream = getResources().openRawResource(R.raw.combined); // CSV 파일 리소스 가져오기
+                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+                try {
+                    // 첫 번째 행(헤더)을 읽어서 버림
+                    reader.readLine();
 
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            String[] data = line.split(","); // CSV 행을 쉼표(,)로 분리하여 데이터 추출
-                            if (data.length >= 4) { // 최소한 주소 정보가 있어야 함
-                                String address = data[2]; // 주소 추출
-                                LatLng location = getLocationFromAddress(address);
-                                if (location != null) {
-                                    runOnUiThread(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            calculateDistance(location.latitude, location.longitude);
-                                        }
-                                    });
-                                }
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        String[] data = line.split(","); // CSV 행을 쉼표(,)로 분리하여 데이터 추출
+                        if (data.length >= 4) { // 최소한 주소 정보가 있어야 함
+                            String address = data[2]; // 주소 추출
+                            LatLng location = getLocationFromAddress(address);
+                            if (location != null) {
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        calculateDistance(location.latitude, location.longitude);
+                                    }
+                                });
                             }
                         }
-                    } catch (IOException e) {
-                        Log.e(TAG, "Error reading CSV file: " + e.getMessage());
-                    } finally {
-                        try {
-                            inputStream.close();
-                        } catch (IOException e) {
-                            Log.e(TAG, "Error closing InputStream: " + e.getMessage());
-                        }
                     }
-                    // 파일의 끝에 도달하면 다시 처음부터 읽기 위해 스레드를 잠시 일시 정지합니다.
+                } catch (IOException e) {
+                    Log.e(TAG, "Error reading CSV file: " + e.getMessage());
+                } finally {
                     try {
-                        Thread.sleep(1000); // 적절한 시간 간격을 설정하여 파일을 다시 읽을 수 있도록 합니다.
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
+                        inputStream.close();
+                    } catch (IOException e) {
+                        Log.e(TAG, "Error closing InputStream: " + e.getMessage());
                     }
                 }
             }
@@ -149,20 +138,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         return location;
     }
 
-    private void addMarker(LatLng location) {
+    private void addCircle(CircleOptions circleOptions) {
         if (mMap != null) {
-            mMap.addMarker(new MarkerOptions().position(location));
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, 15f)); // 마커가 있는 위치로 카메라 이동
+            mMap.addCircle(circleOptions);
         }
     }
 
     private void calculateDistance(double latitude, double longitude) {
-//        double EARTH_R = 6371000.0;
-//        double Rad = Math.PI / 180;
-//        double radLat1 = Rad * currentLatitude;
-//        double radLat2 = Rad * latitude;
-//        double radDist = Rad * (currentLongitude - longitude);
-
         double EARTH_R = 6371000.0;
         double Rad = Math.PI / 180;
         double radLat1 = Rad * 35.169472;
@@ -174,12 +156,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         double ret = EARTH_R * Math.acos(distance);
         double resultInMeters = Math.round(ret);
 
-        Log.d("Distance", "Distance: " + resultInMeters + " meters" + "||"+num);
+        Log.d("Distance", "Distance: " + resultInMeters + " meters");
+
         LatLng location = new LatLng(latitude, longitude);
 
-        if(resultInMeters <= 2500) {
-            addMarker(location);
+        if (resultInMeters <= 1500) {
+            // 100m 반경의 빨간 투명 반원
+            CircleOptions redCircleOptions = new CircleOptions()
+                    .center(location)
+                    .radius(100) // 반경 설정
+                    .fillColor(Color.argb(100, 255, 0, 0))
+                    .strokeColor(Color.argb(100, 255, 0, 0));
+            addCircle(redCircleOptions);
+
+            // 200m 반경의 노란색 반원
+            CircleOptions yellowCircleOptions = new CircleOptions()
+                    .center(location)
+                    .radius(200) // 반경 설정
+                    .fillColor(Color.argb(100, 255, 255, 0))
+                    .strokeColor(Color.argb(100, 255, 255, 0));
+            addCircle(yellowCircleOptions);
         }
+
     }
 
     @Override
@@ -198,5 +196,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public void onStatusChanged(String provider, int status, Bundle extras) {
+    }
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        mMap = googleMap;
     }
 }
