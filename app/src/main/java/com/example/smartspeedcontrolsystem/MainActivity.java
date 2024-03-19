@@ -86,7 +86,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         new Thread(new Runnable() {
             @Override
             public void run() {
-                InputStream inputStream = getResources().openRawResource(R.raw.combined); // CSV 파일 리소스 가져오기
+                InputStream inputStream = getResources().openRawResource(R.raw.output); // CSV 파일 리소스 가져오기
                 BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
                 try {
                     // 첫 번째 행(헤더)을 읽어서 버림
