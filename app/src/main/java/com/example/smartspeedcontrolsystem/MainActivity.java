@@ -169,7 +169,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         double radLat1 = Rad * myRad;
         double radLat2 = Rad * latitude;
         double radDist = Rad * (mylong - longitude);
-          mylong = mylong+0.000003;
+          mylong = mylong + 0.000003;
         double distance = Math.sin(radLat1) * Math.sin(radLat2);
         distance = distance + Math.cos(radLat1) * Math.cos(radLat2) * Math.cos(radDist);
         double ret = EARTH_R * Math.acos(distance);
