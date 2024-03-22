@@ -1,5 +1,5 @@
 package com.example.smartspeedcontrolsystem;
-
+import java.util.Iterator;
 import androidx.appcompat.app.AppCompatActivity;
 import android.graphics.Color;
 import android.location.Address;
@@ -15,6 +15,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import java.io.BufferedReader;
@@ -27,12 +28,17 @@ import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback, LocationListener {
     private GoogleMap mMap;
+    private Circle redCircle;
+    private Circle yellowCircle;
+    private List<Circle> drawnCircles = new ArrayList<>();
     private static final String TAG = "MainActivity";
     private LocationManager locationManager;
     private double currentLatitude, currentLongitude;
     private static final int REQUEST_LOCATION_PERMISSION = 1;
     private List<CircleOptions> circles = new ArrayList<>();
-
+          private double myRad =35.169472;
+       private double mylong = 128.995720;
+    private List<LatLng> drawnCircleCenters = new ArrayList<>();
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -86,7 +92,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         new Thread(new Runnable() {
             @Override
             public void run() {
-                InputStream inputStream = getResources().openRawResource(R.raw.output); // CSV 파일 리소스 가져오기
+                InputStream inputStream = getResources().openRawResource(R.raw.output_lat_long); // CSV 파일 리소스 가져오기
                 BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
                 try {
                     // 첫 번째 행(헤더)을 읽어서 버림
@@ -95,9 +101,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     String line;
                     while ((line = reader.readLine()) != null) {
                         String[] data = line.split(","); // CSV 행을 쉼표(,)로 분리하여 데이터 추출
-                        if (data.length >= 4) { // 최소한 주소 정보가 있어야 함
-                            String address = data[2]; // 주소 추출
-                            LatLng location = getLocationFromAddress(address);
+                        if (data.length >= 2) { // 최소한 주소 정보가 있어야 함
+                            String latitudeStr = data[0];
+                            String longitudeStr = data[1];
+                            double latitude = Double.parseDouble(latitudeStr);
+                            double longitude = Double.parseDouble(longitudeStr);
+                            LatLng location = new LatLng(latitude, longitude);
                             if (location != null) {
                                 runOnUiThread(new Runnable() {
                                     @Override
@@ -117,57 +126,74 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         Log.e(TAG, "Error closing InputStream: " + e.getMessage());
                     }
                 }
+
+                try {
+                    Thread.sleep(3000); // 한차례 호출이 끝나면 3초 딜레이
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                readCsvFile();   // 재귀호출
             }
         }).start();
-
     }
 
-    private LatLng getLocationFromAddress(String strAddress) {
-        Geocoder geocoder = new Geocoder(this, Locale.getDefault());
-        List<Address> addresses;
-        LatLng location = null;
-        try {
-            addresses = geocoder.getFromLocationName(strAddress, 1);
-            if (!addresses.isEmpty()) {
-                Address address = addresses.get(0);
-                location = new LatLng(address.getLatitude(), address.getLongitude());
-            }
-        } catch (IOException e) {
-            Log.e(TAG, "Error getting location from address: " + e.getMessage());
-        }
-        return location;
-    }
+
+
+
+    private ArrayList<LatLng> circleCoordinates = new ArrayList<>(); // 좌표를 저장할 배열 추가
 
     private void addCircle(CircleOptions circleOptions) {
         if (mMap != null) {
-            mMap.addCircle(circleOptions);
+            Circle circle = mMap.addCircle(circleOptions);
+            Log.d(TAG, "Circle added at: ");
+
+            if (circle != null) {
+                LatLng center = circleOptions.getCenter();
+                circleCoordinates.add(center); // 좌표 추가
+            }
         }
     }
 
+    private void removeCircle(Circle circle) {
+        if (circle != null) {
+            LatLng center = circle.getCenter();
+            circle.remove();
+            circleCoordinates.remove(center); // 좌표 배열에서 삭제
+            Log.d(TAG, "Circle removed at: " + center.latitude + ", " + center.longitude);
+        }
+    }
     private void calculateDistance(double latitude, double longitude) {
         double EARTH_R = 6371000.0;
         double Rad = Math.PI / 180;
-        double radLat1 = Rad * 35.169472;
-        double radLat2 = Rad * latitude;
-        double radDist = Rad * (128.995720 - longitude);
 
+        double radLat1 = Rad * myRad;
+        double radLat2 = Rad * latitude;
+        double radDist = Rad * (mylong - longitude);
+          mylong = mylong+0.000003;
         double distance = Math.sin(radLat1) * Math.sin(radLat2);
         distance = distance + Math.cos(radLat1) * Math.cos(radLat2) * Math.cos(radDist);
         double ret = EARTH_R * Math.acos(distance);
         double resultInMeters = Math.round(ret);
 
-        Log.d("Distance", "Distance: " + resultInMeters + " meters");
+        Log.d("Distance", "Distance: " + resultInMeters + " meters" + mylong);
 
         LatLng location = new LatLng(latitude, longitude);
-
         if (resultInMeters <= 1500) {
+            // 반경 내에 있는 좌표를 저장할 배열 초기화
+            ArrayList<LatLng> coordinatesToRemove = new ArrayList<>();
+
             // 100m 반경의 빨간 투명 반원
             CircleOptions redCircleOptions = new CircleOptions()
                     .center(location)
                     .radius(100) // 반경 설정
                     .fillColor(Color.argb(100, 255, 0, 0))
                     .strokeColor(Color.argb(100, 255, 0, 0));
-            addCircle(redCircleOptions);
+            if (!isCircleDrawn(redCircleOptions)) {
+                Circle redCircle = mMap.addCircle(redCircleOptions);
+                Log.d(TAG, "Circle added at: ");
+                drawnCircles.add(redCircle);
+                coordinatesToRemove.add(location); // 저장된 좌표 추가
+            }
 
             // 200m 반경의 노란색 반원
             CircleOptions yellowCircleOptions = new CircleOptions()
@@ -175,11 +201,47 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     .radius(200) // 반경 설정
                     .fillColor(Color.argb(100, 255, 255, 0))
                     .strokeColor(Color.argb(100, 255, 255, 0));
-            addCircle(yellowCircleOptions);
-        }
+            if (!isCircleDrawn(yellowCircleOptions)) {
+                Circle yellowCircle = mMap.addCircle(yellowCircleOptions);
+                Log.d(TAG, "Circle added at: ");
+                drawnCircles.add(yellowCircle);
+                coordinatesToRemove.add(location); // 저장된 좌표 추가
+            }
 
+            // 기존의 반원경 제거 로직 수정
+            for (Iterator<Circle> iterator = drawnCircles.iterator(); iterator.hasNext();) {
+                Circle circle = iterator.next();
+                LatLng center = circle.getCenter();
+                if (!isCircleInsideDistance(center, resultInMeters)) {
+                    removeCircle(circle);
+                    iterator.remove();
+                    coordinatesToRemove.remove(center); // 저장된 좌표 제거
+                }
+            }
+        }
     }
 
+    // 반원경이 주어진 거리 내에 있는지 확인하는 보조 메서드 수정
+    private boolean isCircleInsideDistance(LatLng center, double distance) {
+        // 좌표 간의 거리 계산
+        Location locationA = new Location("point A");
+        locationA.setLatitude(myRad);
+        locationA.setLongitude(mylong);
+        Location locationB = new Location("point B");
+        locationB.setLatitude(center.latitude);
+        locationB.setLongitude(center.longitude);
+        float distanceBetween = locationA.distanceTo(locationB);
+        return distanceBetween <= 1500;
+    }
+
+    private boolean isCircleDrawn(CircleOptions circleOptions) {
+        for (Circle circle : drawnCircles) {
+            if (circle.getCenter().equals(circleOptions.getCenter()) && circle.getRadius() == circleOptions.getRadius()) {
+                return true;
+            }
+        }
+        return false;
+    }
     @Override
     public void onLocationChanged(Location location) {
         currentLatitude = location.getLatitude();
@@ -201,5 +263,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
+        LatLng initialLatLng = new LatLng(35.169472, 128.995720); // 초기 좌표 설정
+
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(initialLatLng, 15)); // 지정한 좌표로 이동 및 줌 레벨 설정
+
     }
 }
