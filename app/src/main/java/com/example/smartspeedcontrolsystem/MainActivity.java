@@ -1,6 +1,9 @@
 package com.example.smartspeedcontrolsystem;
+
 import java.util.Iterator;
+
 import androidx.appcompat.app.AppCompatActivity;
+
 import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
@@ -9,8 +12,10 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.util.Log;
+
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -18,6 +23,7 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,9 +42,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private double currentLatitude, currentLongitude;
     private static final int REQUEST_LOCATION_PERMISSION = 1;
     private List<CircleOptions> circles = new ArrayList<>();
-          private double myRad =35.169472;
-       private double mylong = 128.995720;
+    private double myRad = 35.169472;
+    private double mylong = 128.995720;
     private List<LatLng> drawnCircleCenters = new ArrayList<>();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -72,8 +79,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 // 위치 권한이 부여된 경우 현재 위치 가져오기
                 getCurrentLocation();
             } else {
-                // 위치 권한이 거부된 경우 사용자에게 알림을 보여줄 수 있습니다.
-                // 이 예제에서는 간단히 로그를 출력합니다.
                 Log.e(TAG, "Location permission denied");
             }
         }
@@ -101,7 +106,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     String line;
                     while ((line = reader.readLine()) != null) {
                         String[] data = line.split(","); // CSV 행을 쉼표(,)로 분리하여 데이터 추출
-                        if (data.length >= 2) { // 최소한 주소 정보가 있어야 함
+                        if (data.length >= 2) { // 최소한 주소 정보가 있어야 함 csv파일 참고
                             String latitudeStr = data[0];
                             String longitudeStr = data[1];
                             double latitude = Double.parseDouble(latitudeStr);
@@ -138,8 +143,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
 
-
-
     private ArrayList<LatLng> circleCoordinates = new ArrayList<>(); // 좌표를 저장할 배열 추가
 
     private void addCircle(CircleOptions circleOptions) {
@@ -162,6 +165,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             Log.d(TAG, "Circle removed at: " + center.latitude + ", " + center.longitude);
         }
     }
+
     private void calculateDistance(double latitude, double longitude) {
         double EARTH_R = 6371000.0;
         double Rad = Math.PI / 180;
@@ -169,7 +173,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         double radLat1 = Rad * myRad;
         double radLat2 = Rad * latitude;
         double radDist = Rad * (mylong - longitude);
-          mylong = mylong + 0.000003;
+        mylong = mylong + 0.000003;  //임시위치이동 코드
         double distance = Math.sin(radLat1) * Math.sin(radLat2);
         distance = distance + Math.cos(radLat1) * Math.cos(radLat2) * Math.cos(radDist);
         double ret = EARTH_R * Math.acos(distance);
@@ -209,7 +213,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
 
             // 기존의 반원경 제거 로직 수정
-            for (Iterator<Circle> iterator = drawnCircles.iterator(); iterator.hasNext();) {
+            for (Iterator<Circle> iterator = drawnCircles.iterator(); iterator.hasNext(); ) {
                 Circle circle = iterator.next();
                 LatLng center = circle.getCenter();
                 if (!isCircleInsideDistance(center, resultInMeters)) {
@@ -242,6 +246,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         return false;
     }
+
     @Override
     public void onLocationChanged(Location location) {
         currentLatitude = location.getLatitude();
@@ -265,7 +270,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mMap = googleMap;
         LatLng initialLatLng = new LatLng(35.169472, 128.995720); // 초기 좌표 설정
 
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(initialLatLng, 15)); // 지정한 좌표로 이동 및 줌 레벨 설정
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(initialLatLng, 15)); // 지정한 좌표로 이동 및 줌 설정
 
     }
 }
