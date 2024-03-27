@@ -49,10 +49,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_main); //레이아웃 설정
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
+                .findFragmentById(R.id.map); //레이아웃에 있는 사용할 id 값 받아오기
         mapFragment.getMapAsync(this);
 
         // 위치 권한 확인 및 요청
@@ -70,7 +70,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             getCurrentLocation();
         }
     }
-
+    /*
+     * onRequestPermissionsResult 현재 위치를 gps 를 가져오는코드  에뮬레이터 환경상 구현이 안됨
+     * rccar gps 모듈 이나 휴대폰으로 연동후 구현
+     * */
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
