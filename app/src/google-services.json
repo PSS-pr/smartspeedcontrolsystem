@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "98151729086",
+    "project_id": "smartspeedcontrolsystem",
+    "storage_bucket": "smartspeedcontrolsystem.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:98151729086:android:259124881693dfdb8a9bef",
+        "android_client_info": {
+          "package_name": "com.example.smartspeedcontrolsystem"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBf9U4K3TXhp1gjhCmnhTiXIynQ14sD8qg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

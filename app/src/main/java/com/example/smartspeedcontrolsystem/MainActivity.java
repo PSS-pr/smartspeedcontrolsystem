@@ -4,6 +4,9 @@ import java.util.Iterator;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.OnFailureListener;
+
 import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
@@ -13,8 +16,16 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
+
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.ValueEventListener;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -23,6 +34,7 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.firebase.database.DatabaseReference;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -45,6 +57,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private double myRad = 35.169472;
     private double mylong = 128.995720;
     private List<LatLng> drawnCircleCenters = new ArrayList<>();
+    private DatabaseReference mDatabase;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,12 +67,29 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map); //레이아웃에 있는 사용할 id 값 받아오기
         mapFragment.getMapAsync(this);
-
+        mDatabase = FirebaseDatabase.getInstance().getReference();
         // 위치 권한 확인 및 요청
         checkLocationPermission();
 
         // CSV 파일에서 주소 읽어오기
         readCsvFile();
+    }
+
+    private void writeData(String id, String data) {
+        // "id"라는 키를 사용하여 데이터 쓰기
+        mDatabase.child("id").child(id).setValue(data)
+                .addOnSuccessListener(new OnSuccessListener<Void>() {
+                    @Override
+                    public void onSuccess(Void aVoid) {
+                        Log.d("MainActivity", "Data write successful!");
+                    }
+                })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        Log.e("MainActivity", "Data write failed!", e);
+                    }
+                });
     }
 
     private void checkLocationPermission() {
@@ -70,6 +100,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             getCurrentLocation();
         }
     }
+
     /*
      * onRequestPermissionsResult 현재 위치를 gps 를 가져오는코드  에뮬레이터 환경상 구현이 안됨
      * rccar gps 모듈 이나 휴대폰으로 연동후 구현
@@ -134,7 +165,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         Log.e(TAG, "Error closing InputStream: " + e.getMessage());
                     }
                 }
-
                 try {
                     Thread.sleep(3000); // 한차례 호출이 끝나면 3초 딜레이
                 } catch (InterruptedException e) {
@@ -172,7 +202,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private void calculateDistance(double latitude, double longitude) {
         double EARTH_R = 6371000.0;
         double Rad = Math.PI / 180;
-
         double radLat1 = Rad * myRad;
         double radLat2 = Rad * latitude;
         double radDist = Rad * (mylong - longitude);
@@ -185,6 +214,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Log.d("Distance", "Distance: " + resultInMeters + " meters" + mylong);
 
         LatLng location = new LatLng(latitude, longitude);
+
+        if (resultInMeters <= 200 && resultInMeters >= 100) {
+            writeData("id", "1st");
+            if (resultInMeters <= 100) {
+                writeData("id", "2nd");
+            }
+        } else if (resultInMeters <= 100) {
+            writeData("id", "2nd");
+        }
         if (resultInMeters <= 1500) {
             // 반경 내에 있는 좌표를 저장할 배열 초기화
             ArrayList<LatLng> coordinatesToRemove = new ArrayList<>();
