@@ -56,6 +56,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private List<CircleOptions> circles = new ArrayList<>();
     private double myRad = 35.169472;
     private double mylong = 128.995720;
+    //임시 로 지정한 신라대학교 xy좌표
     private List<LatLng> drawnCircleCenters = new ArrayList<>();
     private DatabaseReference mDatabase;
 
