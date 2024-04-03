@@ -63,18 +63,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main); //레이아웃 설정
-
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map); //레이아웃에 있는 사용할 id 값 받아오기
         mapFragment.getMapAsync(this);
         mDatabase = FirebaseDatabase.getInstance().getReference();
         // 위치 권한 확인 및 요청
         checkLocationPermission();
-
         // CSV 파일에서 주소 읽어오기
         readCsvFile();
     }
 
+    //Fire Base RDS 업데이트
     private void writeData(String id, String data) {
         // "id"라는 키를 사용하여 데이터 쓰기
         mDatabase.child("id").child(id).setValue(data)
@@ -92,6 +91,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 });
     }
 
+
+    //user location 받아오는 코드 미완
     private void checkLocationPermission() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_LOCATION_PERMISSION);
@@ -310,8 +311,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
         LatLng initialLatLng = new LatLng(35.169472, 128.995720); // 초기 좌표 설정
+        //여기에 유저 gps 정보를 넣으면됨
 
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(initialLatLng, 15)); // 지정한 좌표로 이동 및 줌 설정
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(initialLatLng, 13)); // 지정한 좌표로 이동 및 줌 설정
 
     }
 }
