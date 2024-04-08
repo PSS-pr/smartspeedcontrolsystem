@@ -3,10 +3,14 @@ package com.example.smartspeedcontrolsystem;
 import java.util.Iterator;
 
 import androidx.appcompat.app.AppCompatActivity;
+import android.content.pm.PackageManager;
+import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.OnFailureListener;
+import com.example.smartspeedcontrolsystem.LocationUtils;
 
+import android.content.Intent;
 import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
@@ -56,7 +60,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private List<CircleOptions> circles = new ArrayList<>();
     private double myRad = 35.169472;
     private double mylong = 128.995720;
-    //임시 로 지정한 신라대학교 xy좌표
     private List<LatLng> drawnCircleCenters = new ArrayList<>();
     private DatabaseReference mDatabase;
 
@@ -70,6 +73,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mDatabase = FirebaseDatabase.getInstance().getReference();
         // 위치 권한 확인 및 요청
         checkLocationPermission();
+
+        LocationUtils.getCurrentLocation(this);
+
         // CSV 파일에서 주소 읽어오기
         readCsvFile();
     }
@@ -92,14 +98,22 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 });
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // MainActivity가 화면에 다시 보일 때 인텐트를 확인하여 좌표를 받아옵니다.
+        Intent intent = getIntent();
+        if (intent != null) {
+            double latitude2 = intent.getDoubleExtra("latitude", 0.0);
+            double longitude2 = intent.getDoubleExtra("longitude", 0.0);
 
+            Log.d(TAG, "onResume: "+latitude2+" "+longitude2);
+        }
+    }
     //user location 받아오는 코드 미완
     private void checkLocationPermission() {
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_LOCATION_PERMISSION);
-        } else {
-            // 위치 권한이 이미 부여된 경우 현재 위치 가져오기
-            getCurrentLocation();
         }
     }
 
@@ -108,14 +122,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
      * rccar gps 모듈 이나 휴대폰으로 연동후 구현
      * */
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_LOCATION_PERMISSION) {
-            if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                // 위치 권한이 부여된 경우 현재 위치 가져오기
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // 권한 허용 시 위치 정보 가져오기
                 getCurrentLocation();
             } else {
-                Log.e(TAG, "Location permission denied");
+                Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -292,8 +306,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public void onLocationChanged(Location location) {
-        currentLatitude = location.getLatitude();
-        currentLongitude = location.getLongitude();
+        double latitude = location.getLatitude();
+        double longitude = location.getLongitude();
+        LatLng currentLatLng = new LatLng(latitude, longitude);
+        // 위치 정보를 Firebase에 업데이트
+        writeData("current_location", currentLatLng.toString());
+        // 지도 이동
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(currentLatLng));
     }
 
     @Override
