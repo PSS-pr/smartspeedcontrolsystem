@@ -5,6 +5,7 @@ import java.util.Iterator;
 import androidx.appcompat.app.AppCompatActivity;
 import android.content.pm.PackageManager;
 import android.widget.Toast;
+import android.os.Handler; // Handler 클래스 import 추가
 
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -52,6 +53,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private GoogleMap mMap;
     private Circle redCircle;
     private Circle yellowCircle;
+    private double latitude2;
+    private double longitude2;
     private List<Circle> drawnCircles = new ArrayList<>();
     private static final String TAG = "MainActivity";
     private LocationManager locationManager;
@@ -75,10 +78,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         checkLocationPermission();
 
         LocationUtils.getCurrentLocation(this);
-
         // CSV 파일에서 주소 읽어오기
         readCsvFile();
+
+        // 위치 정보 갱신
+        updateLocation();
     }
+
 
     //Fire Base RDS 업데이트
     private void writeData(String id, String data) {
@@ -98,18 +104,27 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 });
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        // MainActivity가 화면에 다시 보일 때 인텐트를 확인하여 좌표를 받아옵니다.
+
+    // 위치 정보를 갱신하는 메서드
+    private void updateLocation() {
         Intent intent = getIntent();
         if (intent != null) {
-            double latitude2 = intent.getDoubleExtra("latitude", 0.0);
-            double longitude2 = intent.getDoubleExtra("longitude", 0.0);
+            latitude2 = intent.getDoubleExtra("latitude", latitude2);
+            longitude2 = intent.getDoubleExtra("longitude", longitude2);
 
-            Log.d(TAG, "onResume: "+latitude2+" "+longitude2);
+
+            Log.d(TAG, "updateLocation: " + latitude2 + " " + longitude2);
         }
+
+        // 재귀 호출을 사용하여 위치 정보를 주기적으로 갱신
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                updateLocation(); // 위치 정보 갱신 함수 호출
+            }
+        }, 3000); // 3초마다 위치 정보를 갱신하도록 설정 (원하는 시간으로 변경 가능)
     }
+
     //user location 받아오는 코드 미완
     private void checkLocationPermission() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -218,16 +233,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private void calculateDistance(double latitude, double longitude) {
         double EARTH_R = 6371000.0;
         double Rad = Math.PI / 180;
-        double radLat1 = Rad * myRad;
+        double radLat1 = Rad * latitude2;
         double radLat2 = Rad * latitude;
-        double radDist = Rad * (mylong - longitude);
-        mylong = mylong + 0.000003;  //임시위치이동 코드
+        double radDist = Rad * (longitude2 - longitude);
         double distance = Math.sin(radLat1) * Math.sin(radLat2);
         distance = distance + Math.cos(radLat1) * Math.cos(radLat2) * Math.cos(radDist);
         double ret = EARTH_R * Math.acos(distance);
         double resultInMeters = Math.round(ret);
 
-        Log.d("Distance", "Distance: " + resultInMeters + " meters" + mylong);
+        Log.d("Distance", "Distance: " + resultInMeters + " meters" + longitude2 +" ||" + latitude2);
 
         LatLng location = new LatLng(latitude, longitude);
 
@@ -286,8 +300,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private boolean isCircleInsideDistance(LatLng center, double distance) {
         // 좌표 간의 거리 계산
         Location locationA = new Location("point A");
-        locationA.setLatitude(myRad);
-        locationA.setLongitude(mylong);
+        locationA.setLatitude(latitude2);
+        locationA.setLongitude(longitude2);
         Location locationB = new Location("point B");
         locationB.setLatitude(center.latitude);
         locationB.setLongitude(center.longitude);
@@ -310,9 +324,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         double longitude = location.getLongitude();
         LatLng currentLatLng = new LatLng(latitude, longitude);
         // 위치 정보를 Firebase에 업데이트
-        writeData("current_location", currentLatLng.toString());
-        // 지도 이동
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(currentLatLng));
     }
 
     @Override
@@ -330,10 +341,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-        LatLng initialLatLng = new LatLng(35.169472, 128.995720); // 초기 좌표 설정
+        LatLng initialLatLng = new LatLng(latitude2, longitude2); // 초기 좌표 설정
         //여기에 유저 gps 정보를 넣으면됨
 
+
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(initialLatLng, 13)); // 지정한 좌표로 이동 및 줌 설정
+
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            mMap.setMyLocationEnabled(true); // 내 위치로의 자동 이동 비활성화
+        }
+
 
     }
 }
