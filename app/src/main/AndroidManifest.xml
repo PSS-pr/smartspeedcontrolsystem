@@ -5,8 +5,6 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
 
     <uses-permission android:name="android.permission.INTERNET"/>
 
@@ -20,7 +18,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.SmartSpeedControlSystem"
-        tools:targetApi="31">
+        tools:targetApi="30">
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -32,7 +30,7 @@
         </activity>
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyAmt4nvKPCYzsW_Y2jlUnshus91Aoc0XCM"/>
+            android:value="AIzaSyB9VQDUmkRjHZHmp7wQ1zNzcda03vkwnJI"/>
     </application>
 
 </manifest>

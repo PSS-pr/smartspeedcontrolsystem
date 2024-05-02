@@ -112,7 +112,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             latitude2 = intent.getDoubleExtra("latitude", latitude2);
             longitude2 = intent.getDoubleExtra("longitude", longitude2);
 
-
             Log.d(TAG, "updateLocation: " + latitude2 + " " + longitude2);
         }
 
@@ -245,14 +244,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         LatLng location = new LatLng(latitude, longitude);
 
-        if (resultInMeters <= 200 && resultInMeters >= 100) {
+//        if (resultInMeters <= 200 && resultInMeters >= 100) {
+//            writeData("id", "1st");
+//            if (resultInMeters <= 100) {
+//                writeData("id", "2nd");
+//            }
+//        } else if (resultInMeters <= 100) {
             writeData("id", "1st");
-            if (resultInMeters <= 100) {
-                writeData("id", "2nd");
-            }
-        } else if (resultInMeters <= 100) {
-            writeData("id", "2nd");
-        }
+//        }
         if (resultInMeters <= 1500) {
             // 반경 내에 있는 좌표를 저장할 배열 초기화
             ArrayList<LatLng> coordinatesToRemove = new ArrayList<>();
