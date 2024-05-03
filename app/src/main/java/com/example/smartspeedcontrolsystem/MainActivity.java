@@ -72,17 +72,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         setContentView(R.layout.activity_main); //레이아웃 설정
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map); //레이아웃에 있는 사용할 id 값 받아오기
-        mapFragment.getMapAsync(this);
         mDatabase = FirebaseDatabase.getInstance().getReference();
         // 위치 권한 확인 및 요청
         checkLocationPermission();
 
-        LocationUtils.getCurrentLocation(this);
         // CSV 파일에서 주소 읽어오기
         readCsvFile();
-
+        LocationUtils.getCurrentLocation(this, this);
         // 위치 정보 갱신
         updateLocation();
+        mapFragment.getMapAsync(this);
+
     }
 
 
@@ -108,12 +108,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     // 위치 정보를 갱신하는 메서드
     private void updateLocation() {
         Intent intent = getIntent();
-        if (intent != null) {
-            latitude2 = intent.getDoubleExtra("latitude", latitude2);
-            longitude2 = intent.getDoubleExtra("longitude", longitude2);
 
-            Log.d(TAG, "updateLocation: " + latitude2 + " " + longitude2);
-        }
 
         // 재귀 호출을 사용하여 위치 정보를 주기적으로 갱신
         new Handler().postDelayed(new Runnable() {
@@ -123,6 +118,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         }, 3000); // 3초마다 위치 정보를 갱신하도록 설정 (원하는 시간으로 변경 가능)
     }
+
+
+
 
     //user location 받아오는 코드 미완
     private void checkLocationPermission() {
@@ -250,7 +248,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 //                writeData("id", "2nd");
 //            }
 //        } else if (resultInMeters <= 100) {
-            writeData("id", "1st");
+//            writeData("id", "1st");
 //        }
         if (resultInMeters <= 1500) {
             // 반경 내에 있는 좌표를 저장할 배열 초기화
@@ -323,7 +321,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         double longitude = location.getLongitude();
         LatLng currentLatLng = new LatLng(latitude, longitude);
         // 위치 정보를 Firebase에 업데이트
+        Log.e(TAG, "logview logview:2 " + currentLatLng +"logview");
+        latitude2 =latitude;
+        longitude2=longitude;
+        // 현재 위치로 지도를 부드럽게 이동시킴
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(currentLatLng));
     }
+
 
     @Override
     public void onProviderEnabled(String provider) {
@@ -342,14 +346,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         mMap = googleMap;
         LatLng initialLatLng = new LatLng(latitude2, longitude2); // 초기 좌표 설정
         //여기에 유저 gps 정보를 넣으면됨
-
-
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(initialLatLng, 13)); // 지정한 좌표로 이동 및 줌 설정
 
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             mMap.setMyLocationEnabled(true); // 내 위치로의 자동 이동 비활성화
         }
-
-
     }
 }
