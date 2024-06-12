@@ -4,9 +4,15 @@ import java.util.Iterator;
 
 import androidx.appcompat.app.AppCompatActivity;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.widget.Toast;
 import android.os.Handler; // Handler 클래스 import 추가
 
+import com.google.android.gms.maps.model.BitmapDescriptor;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.example.smartspeedcontrolsystem.LocationUtils;
@@ -65,7 +71,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private double mylong = 128.995720;
     private List<LatLng> drawnCircleCenters = new ArrayList<>();
     private DatabaseReference mDatabase;
-
+    private List<Marker> markers = new ArrayList<>();
+    private DatabaseReference myRefLatitude;
+    private DatabaseReference myRefLongitude;
+    private Handler handler;
+    private Runnable runnable;
+    private static final long INTERVAL = 3000;
+    public static String carlongitude ="128.995720";
+    public static String carlatitude ="35.169472";
+    DatabaseReference mRootRef = FirebaseDatabase.getInstance().getReference();
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -74,22 +88,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .findFragmentById(R.id.map); //레이아웃에 있는 사용할 id 값 받아오기
         mDatabase = FirebaseDatabase.getInstance().getReference();
         // 위치 권한 확인 및 요청
+        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        mDatabase = database.getReference();
+        handler = new Handler();
         checkLocationPermission();
-
-        // CSV 파일에서 주소 읽어오기
         readCsvFile();
-        LocationUtils.getCurrentLocation(this, this);
-        // 위치 정보 갱신
-        updateLocation();
         mapFragment.getMapAsync(this);
-
     }
 
 
     //Fire Base RDS 업데이트
     private void writeData(String id, String data) {
         // "id"라는 키를 사용하여 데이터 쓰기
-        mDatabase.child("id").child(id).setValue(data)
+        mDatabase.child("").child(id).setValue(data)
                 .addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
                     public void onSuccess(Void aVoid) {
@@ -105,24 +116,132 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
 
-    // 위치 정보를 갱신하는 메서드
-    private void updateLocation() {
-        Intent intent = getIntent();
+    private void fetchData() {
+        DatabaseReference conditionRef3 = mRootRef.child("latitude");
+        DatabaseReference conditionRef4 = mRootRef.child("longitude");
 
-
-        // 재귀 호출을 사용하여 위치 정보를 주기적으로 갱신
-        new Handler().postDelayed(new Runnable() {
+        conditionRef3.addValueEventListener(new ValueEventListener() {
             @Override
-            public void run() {
-                updateLocation(); // 위치 정보 갱신 함수 호출
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                Double carLatitudeDouble = dataSnapshot.getValue(Double.class);
+                if (carLatitudeDouble != null) {
+                    carlatitude = carLatitudeDouble.toString();
+                    Log.d("datachange" ,"kof"+carlatitude);
+                    updateMap();
+                } else {
+                    // Handle the case where carLatitudeDouble is null
+                }
             }
-        }, 3000); // 3초마다 위치 정보를 갱신하도록 설정 (원하는 시간으로 변경 가능)
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                // Handle possible errors.
+            }
+        });
+
+        conditionRef4.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                Double carLongitudeDouble = dataSnapshot.getValue(Double.class);
+                if (carLongitudeDouble != null) {
+                    carlongitude = carLongitudeDouble.toString();
+                    Log.d("datachange" ,"kof"+carlongitude);
+                    updateMap();
+                } else {
+                    // Handle the case where carLongitudeDouble is null
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                // Handle possible errors.
+            }
+        });
+    }
+    private void updateMap() {
+        if (carlatitude != null && carlongitude != null) {
+            double latitude = Double.parseDouble(carlatitude);
+            double longitude = Double.parseDouble(carlongitude);
+            LatLng carLocation = new LatLng(latitude, longitude);
+
+            // Clear only markers
+            for (Marker marker : markers) {
+                marker.remove();
+            }
+            markers.clear();
+
+            // Create a Bitmap from the drawable
+            BitmapDrawable bitmapDrawable = (BitmapDrawable) getResources().getDrawable(R.drawable.imagecar);
+            Bitmap bitmap = bitmapDrawable.getBitmap();
+
+            // Resize the Bitmap
+            Bitmap smallMarker = Bitmap.createScaledBitmap(bitmap, 100, 100, false);
+
+            // Create a BitmapDescriptor from the resized Bitmap
+            BitmapDescriptor customIcon = BitmapDescriptorFactory.fromBitmap(smallMarker);
+
+            // Add a marker with the custom icon
+            Marker marker = mMap.addMarker(new MarkerOptions()
+                    .position(carLocation)
+                    .title("Car Location")
+                    .icon(customIcon));
+
+            // Add the marker to the list
+            markers.add(marker);
+
+            // Move the camera to the marker
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(carLocation, 16));
+        }
     }
 
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        handler.removeCallbacks(runnable); // 액티비티 종료 시 핸들러 콜백 제거
+    }
 
+//    private void fetchData() {
+//        myRefLatitude.addListenerForSingleValueEvent(new ValueEventListener() {
+//            @Override
+//            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+//                carlatitude = dataSnapshot.getValue(String.class);
+//                Log.d(TAG, "Latitude is: " + carlatitude);
+//            }
+//
+//            @Override
+//            public void onCancelled(@NonNull DatabaseError error) {
+//                Log.w(TAG, "Failed to read latitude value.", error.toException());
+//            }
+//        });
+//
+//        myRefLongitude.addListenerForSingleValueEvent(new ValueEventListener() {
+//            @Override
+//            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+//                carlongitude = dataSnapshot.getValue(String.class);
+//                Log.d(TAG, "Longitude is: " + carlongitude);
+//            }
+//
+//            @Override
+//            public void onCancelled(@NonNull DatabaseError error) {
+//                Log.w(TAG, "Failed to read longitude value.", error.toException());
+//            }
+//        });
+//    }
 
-    //user location 받아오는 코드 미완
+    // 위치 정보를 갱신하는 메서드
+//    private void updateLocation() {
+//        Intent intent = getIntent();
+//
+//
+//        // 재귀 호출을 사용하여 위치 정보를 주기적으로 갱신
+//        new Handler().postDelayed(new Runnable() {
+//            @Override
+//            public void run() {
+//                updateLocation(); // 위치 정보 갱신 함수 호출
+//            }
+//        }, 3000); // 3초마다 위치 정보를 갱신하도록 설정 (원하는 시간으로 변경 가능)
+//    }
+
     private void checkLocationPermission() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_LOCATION_PERMISSION);
@@ -198,7 +317,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
-                readCsvFile();   // 재귀호출
+                fetchData();
+                readCsvFile();
             }
         }).start();
     }
@@ -230,26 +350,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private void calculateDistance(double latitude, double longitude) {
         double EARTH_R = 6371000.0;
         double Rad = Math.PI / 180;
-        double radLat1 = Rad * latitude2;
+        double radLat1 = Rad * Double.parseDouble(carlatitude);
         double radLat2 = Rad * latitude;
-        double radDist = Rad * (longitude2 - longitude);
+        double radDist = Rad * (Double.parseDouble(carlongitude) - longitude);
         double distance = Math.sin(radLat1) * Math.sin(radLat2);
         distance = distance + Math.cos(radLat1) * Math.cos(radLat2) * Math.cos(radDist);
         double ret = EARTH_R * Math.acos(distance);
         double resultInMeters = Math.round(ret);
 
-        Log.d("Distance", "Distance: " + resultInMeters + " meters" + longitude2 +" ||" + latitude2);
+        Log.d("Distance", "Distance: " + resultInMeters + " meters" + carlatitude +" ||" + carlongitude);
 
         LatLng location = new LatLng(latitude, longitude);
-
-//        if (resultInMeters <= 200 && resultInMeters >= 100) {
-//            writeData("id", "1st");
-//            if (resultInMeters <= 100) {
-//                writeData("id", "2nd");
-//            }
-//        } else if (resultInMeters <= 100) {
-//            writeData("id", "1st");
-//        }
+        if (resultInMeters <= 200){
+        writeData("ANDVAL","OK");
+        }
         if (resultInMeters <= 1500) {
             // 반경 내에 있는 좌표를 저장할 배열 초기화
             ArrayList<LatLng> coordinatesToRemove = new ArrayList<>();
@@ -297,8 +411,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private boolean isCircleInsideDistance(LatLng center, double distance) {
         // 좌표 간의 거리 계산
         Location locationA = new Location("point A");
-        locationA.setLatitude(latitude2);
-        locationA.setLongitude(longitude2);
+        locationA.setLatitude(Double.parseDouble(carlatitude));
+        locationA.setLongitude(Double.parseDouble(carlongitude));
         Location locationB = new Location("point B");
         locationB.setLatitude(center.latitude);
         locationB.setLongitude(center.longitude);
@@ -344,12 +458,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-        LatLng initialLatLng = new LatLng(latitude2, longitude2); // 초기 좌표 설정
-        //여기에 유저 gps 정보를 넣으면됨
+        double lat = Double.parseDouble(carlatitude);
+        double lng = Double.parseDouble(carlongitude);
+        LatLng initialLatLng = new LatLng(lat, lng); //여기에 유저 gps 정보를 넣으면됨
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(initialLatLng, 13)); // 지정한 좌표로 이동 및 줌 설정
 
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            mMap.setMyLocationEnabled(true); // 내 위치로의 자동 이동 비활성화
-        }
+
     }
 }
